@@ -1,0 +1,91 @@
+/* src/app/globals.css */
+/* ─── Variables de marca (valores por defecto — el superAdmin los sobreescribe) */
+:root {
+  --color-primary:      #3B82F6;
+  --color-secondary:    #1E40AF;
+  --color-accent:       #F59E0B;
+  --color-bg:           #F9FAFB;
+  --color-surface:      #FFFFFF;
+  --color-text:         #111827;
+  --color-text-muted:   #6B7280;
+  --color-nav:          #1E40AF;
+  --color-nav-text:     #FFFFFF;
+  --color-footer:       #111827;
+  --color-footer-text:  #D1D5DB;
+  --color-danger:       #EF4444;
+  --color-success:      #10B981;
+  --color-warning:      #F59E0B;
+  --border-radius:      0.5rem;
+  --font-brand:         'Inter', sans-serif;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base ──────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-brand);
+}
+
+/* ─── Clases utilitarias de marca ────────────────────────────────────────────── */
+@layer utilities {
+  .bg-brand-primary    { background-color: var(--color-primary); }
+  .bg-brand-secondary  { background-color: var(--color-secondary); }
+  .bg-brand-accent     { background-color: var(--color-accent); }
+  .bg-brand-surface    { background-color: var(--color-surface); }
+  .bg-brand-nav        { background-color: var(--color-nav); }
+  .bg-brand-footer     { background-color: var(--color-footer); }
+
+  .text-brand-primary  { color: var(--color-primary); }
+  .text-brand-accent   { color: var(--color-accent); }
+  .text-brand-nav      { color: var(--color-nav-text); }
+  .text-brand-footer   { color: var(--color-footer-text); }
+  .text-brand-muted    { color: var(--color-text-muted); }
+
+  .border-brand        { border-color: var(--color-primary); }
+  .rounded-brand       { border-radius: var(--border-radius); }
+
+  .btn-primary {
+    @apply px-4 py-2 font-semibold text-white transition-opacity hover:opacity-90 rounded-brand;
+    background-color: var(--color-primary);
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 font-semibold transition-opacity hover:opacity-90 rounded-brand;
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+  }
+
+  .btn-accent {
+    @apply px-4 py-2 font-semibold text-white transition-opacity hover:opacity-90 rounded-brand;
+    background-color: var(--color-accent);
+  }
+
+  .card {
+    @apply p-4 shadow-sm rounded-brand;
+    background-color: var(--color-surface);
+  }
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; }
+::-webkit-scrollbar-track  { background: var(--color-bg); }
+::-webkit-scrollbar-thumb  { background: var(--color-primary); border-radius: 3px; }
+
+/* ─── Focus accesible ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

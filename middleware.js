@@ -1,0 +1,84 @@
+// middleware.js
+import { NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
+
+async function verifyToken(token) {
+  const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+  return jwtVerify(token, secret);
+}
+
+export async function middleware(request) {
+  const pathname = request.nextUrl.pathname;
+  const token = request.cookies.get('token')?.value;
+
+  // ─── Redirigir si ya está logueado ─────────────────────────────────────────
+  const loginPaths = ['/login', '/register'];
+  if (token && loginPaths.some((p) => pathname.startsWith(p))) {
+    try {
+      const { payload } = await verifyToken(token);
+      const rol = payload.rol;
+      if (rol === 'superAdmin') return NextResponse.redirect(new URL('/super-admin', request.url));
+      if (rol === 'admin')      return NextResponse.redirect(new URL('/admin', request.url));
+      return NextResponse.redirect(new URL('/mi-cuenta', request.url));
+    } catch {
+      return NextResponse.next();
+    }
+  }
+
+  // ─── Rutas públicas ─────────────────────────────────────────────────────────
+  const publicPaths = ['/', '/productos', '/login', '/register', '/api/auth', '/api/configuracion/public', '/api/productos'];
+  const isPublic = publicPaths.some(
+    (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
+  );
+  if (isPublic) return NextResponse.next();
+
+  // ─── Rutas protegidas: requieren token ──────────────────────────────────────
+  if (!token) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // ─── Validar token y roles ──────────────────────────────────────────────────
+  try {
+    const { payload } = await verifyToken(token);
+    const rol = payload.rol;
+
+    // SuperAdmin: acceso exclusivo a /super-admin
+    if (pathname.startsWith('/super-admin') && rol !== 'superAdmin') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // Admin: acceso exclusivo a /admin
+    if (pathname.startsWith('/admin') && rol !== 'admin' && rol !== 'superAdmin') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // Mi cuenta: solo clientes y admins (no superAdmin)
+    if (pathname.startsWith('/mi-cuenta') && rol === 'superAdmin') {
+      return NextResponse.redirect(new URL('/super-admin', request.url));
+    }
+
+    return NextResponse.next();
+  } catch (err) {
+    console.error('[Middleware] Token inválido:', err.message);
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.delete('token');
+    return response;
+  }
+}
+
+export const config = {
+  matcher: [
+    '/admin/:path*',
+    '/super-admin/:path*',
+    '/mi-cuenta/:path*',
+    '/checkout/:path*',
+    '/login',
+    '/register',
+    '/api/admin/:path*',
+    '/api/super-admin/:path*',
+    '/api/pedidos/:path*',
+    '/api/reportes/:path*',
+  ],
+};
