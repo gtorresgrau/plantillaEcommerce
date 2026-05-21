@@ -4,14 +4,23 @@ import { connectDB } from '@/lib/mongodb';
 import Producto from '@/models/Product';
 import { getAuthUser } from '@/lib/auth';
 import { deleteImage } from '@/lib/cloudinary';
+import { PRODUCTOS_PRUEBA } from '@/data/productosDePrueba';
 
 // ─── GET: Obtener producto por cod_producto ────────────────────────────────────
 export async function GET(request, { params }) {
   try {
     await connectDB();
     const producto = await Producto.findOne({ cod_producto: params.id }).lean();
-    if (!producto) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
-    return NextResponse.json({ success: true, data: producto });
+    if (producto) return NextResponse.json({ success: true, data: producto });
+
+    // Fallback a demo products
+    const demo = PRODUCTOS_PRUEBA.find(p => p.cod_producto === params.id);
+    if (demo) {
+      const precioFinal = demo.descuento > 0 ? Math.round(demo.precio * (1 - demo.descuento / 100)) : demo.precio;
+      return NextResponse.json({ success: true, data: { ...demo, precioFinal } });
+    }
+
+    return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
   } catch (error) {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }

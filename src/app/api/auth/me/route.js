@@ -19,3 +19,25 @@ export async function GET() {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }
+
+export async function PUT(request) {
+  try {
+    const auth = await getAuthUser();
+    if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+    const { nombre, apellido, telefono } = await request.json();
+
+    await connectDB();
+    const user = await User.findByIdAndUpdate(
+      auth.id,
+      { $set: { nombre, apellido, telefono } },
+      { new: true }
+    ).lean();
+    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+
+    delete user.password;
+    return NextResponse.json({ success: true, user });
+  } catch (error) {
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+  }
+}

@@ -25,14 +25,7 @@ export async function middleware(request) {
     }
   }
 
-  // ─── Rutas públicas ─────────────────────────────────────────────────────────
-  const publicPaths = ['/', '/productos', '/login', '/register', '/api/auth', '/api/configuracion/public', '/api/productos'];
-  const isPublic = publicPaths.some(
-    (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
-  );
-  if (isPublic) return NextResponse.next();
-
-  // ─── Rutas protegidas: requieren token ──────────────────────────────────────
+  // ─── Rutas protegidas: requieren token válido ──────────────────────────────
   if (!token) {
     const url = new URL('/login', request.url);
     url.searchParams.set('redirect', pathname);
@@ -54,7 +47,7 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // Mi cuenta: solo clientes y admins (no superAdmin)
+    // Mi cuenta: redirigir superAdmin a su panel
     if (pathname.startsWith('/mi-cuenta') && rol === 'superAdmin') {
       return NextResponse.redirect(new URL('/super-admin', request.url));
     }
@@ -70,15 +63,18 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
+    // Paneles protegidos — siempre requieren login
     '/admin/:path*',
     '/super-admin/:path*',
     '/mi-cuenta/:path*',
-    '/checkout/:path*',
+    // Login/register: redirigir si ya autenticado
     '/login',
     '/register',
-    '/api/admin/:path*',
+    // APIs protegidas
     '/api/super-admin/:path*',
-    '/api/pedidos/:path*',
     '/api/reportes/:path*',
+    // Nota: /checkout, /carrito y /api/pedidos son accesibles sin login
+    // El carrito y checkout permiten compra como invitado
+    // Los pedidos validan internamente si el usuario es dueño del pedido
   ],
 };

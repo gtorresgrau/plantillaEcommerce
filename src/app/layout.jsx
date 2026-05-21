@@ -1,6 +1,8 @@
 // src/app/layout.jsx
 import './globals.css';
 import { BrandingProvider } from '@/contexts/BrandingContext';
+import { AuthProvider }     from '@/contexts/AuthContext';
+import { CartProvider }     from '@/contexts/CartContext';
 import { connectDB } from '@/lib/mongodb';
 import BrandingConfig from '@/models/BrandingConfig';
 
@@ -74,7 +76,11 @@ export default async function RootLayout({ children }) {
       </head>
       <body>
         <BrandingProvider branding={branding}>
-          {children}
+          <AuthProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </AuthProvider>
         </BrandingProvider>
       </body>
     </html>

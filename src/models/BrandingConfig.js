@@ -50,13 +50,19 @@ const brandingConfigSchema = new mongoose.Schema({
 
   // ── Textos UI personalizables ──────────────────────────────────────────────
   textos: {
-    botonComprar:    { type: String, default: 'Comprar ahora' },
-    botonCarrito:    { type: String, default: 'Agregar al carrito' },
-    botonContacto:   { type: String, default: '¡Contáctanos!' },
-    textoBienvenida: { type: String, default: 'Bienvenido a nuestra tienda' },
-    textoHero:       { type: String, default: 'Los mejores productos al mejor precio' },
-    textoCTA:        { type: String, default: 'Ver productos' },
-    mensajeWhatsapp: { type: String, default: 'Hola, me gustaría consultar sobre: ' },
+    botonComprar:         { type: String, default: 'Comprar ahora' },
+    botonCarrito:         { type: String, default: 'Agregar al carrito' },
+    botonContacto:        { type: String, default: '¡Contáctanos!' },
+    textoBienvenida:      { type: String, default: 'Bienvenido a nuestra tienda' },
+    textoHero:            { type: String, default: 'Los mejores productos al mejor precio' },
+    textoCTA:             { type: String, default: 'Ver productos' },
+    mensajeWhatsapp:      { type: String, default: 'Hola, me gustaría consultar sobre: ' },
+    // Sección Nosotros
+    textoNosotros:        { type: String, default: 'Sobre nosotros' },
+    descripcionNosotros:  { type: String, default: 'Somos una tienda comprometida con brindar los mejores productos y la mejor experiencia de compra online.' },
+    // Sección Destacados
+    textoDestacados:      { type: String, default: 'Productos destacados' },
+    subtituloDestacados:  { type: String, default: 'Los favoritos de nuestros clientes' },
   },
 
   // ── Secciones visibles en home ─────────────────────────────────────────────
@@ -66,6 +72,9 @@ const brandingConfigSchema = new mongoose.Schema({
     mostrarNovedades:   { type: Boolean, default: true },
     mostrarBanner:      { type: Boolean, default: true },
     mostrarTestimonios: { type: Boolean, default: false },
+    mostrarNosotros:    { type: Boolean, default: true },
+    mostrarFAQ:         { type: Boolean, default: true },
+    mostrarContacto:    { type: Boolean, default: true },
   },
 
   // ── Estado ─────────────────────────────────────────────────────────────────
