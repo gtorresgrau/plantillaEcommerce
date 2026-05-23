@@ -24,7 +24,7 @@ export async function verifyToken(token) {
 // ─── Obtener usuario autenticado desde la cookie (Server Component / API Route) ─
 export async function getAuthUser() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (!token) return null;
     return await verifyToken(token);

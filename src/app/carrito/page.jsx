@@ -1,14 +1,56 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import Navbar from '@/components/storefront/Navbar';
 import Footer from '@/components/storefront/Footer';
 import { useCart } from '@/contexts/CartContext';
 import Swal from 'sweetalert2';
 
+// Skeleton para evitar hydration mismatch con localStorage
+function CarritoSkeleton() {
+  return (
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <Navbar />
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 flex-1">
+        <div className="h-8 bg-gray-200 rounded w-48 mb-6 animate-pulse" />
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="card flex gap-4 animate-pulse">
+                <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/4" />
+                  <div className="h-8 bg-gray-200 rounded w-full mt-3" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="card animate-pulse">
+              <div className="h-5 bg-gray-200 rounded w-1/2 mb-4" />
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded" />
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+              </div>
+              <div className="h-12 bg-gray-200 rounded mt-6" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
 export default function CarritoPage() {
+  const [mounted, setMounted] = useState(false);
   const { items, removeItem, updateQty, clearCart, subtotal, totalItems } = useCart();
+
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return <CarritoSkeleton />;
 
   const handleRemove = (cod) => {
     Swal.fire({
@@ -64,7 +106,7 @@ export default function CarritoPage() {
           {/* Items */}
           <div className="lg:col-span-2 space-y-3">
             {items.map(item => (
-              <div key={item.cod_producto} className="card flex gap-4">
+              <div key={item.cod_producto} className="card flex gap-4 transition-all duration-200 hover:shadow-md" style={{ animation: 'fadeIn 0.2s ease' }}>
                 {/* Imagen */}
                 <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                   {item.foto1 ? (

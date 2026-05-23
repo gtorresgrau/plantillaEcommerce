@@ -35,7 +35,7 @@ const orderSchema = new mongoose.Schema({
     precio:       { type: Number, required: true },
     precioFinal:  { type: Number },          // con descuento
     quantity:     { type: Number, required: true, default: 1 },
-    foto_1_1:     { type: String },
+    foto1:     { type: String },
   }],
 
   // ── Totales ────────────────────────────────────────────────────────────────
@@ -98,6 +98,23 @@ const orderSchema = new mongoose.Schema({
     porcentajeComision: { type: Number, default: 0 },
     comisionTotal:      { type: Number, default: 0 },
   },
+
+  // ── Historial de estados ───────────────────────────────────────────────────
+  historialEstados: [{
+    estado:    { type: String },
+    fecha:     { type: Date, default: Date.now },
+    nota:      { type: String, default: '' },
+    usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  }],
+
+  // ── Cupón de descuento ─────────────────────────────────────────────────────
+  cupon: {
+    codigo:    { type: String, default: '' },
+    tipo:      { type: String, enum: ['porcentaje', 'monto', ''], default: '' },
+    valor:     { type: Number, default: 0 },
+    descuento: { type: Number, default: 0 },
+  },
+  descuentoCupon:   { type: Number, default: 0 },
 
   // ── Comprobante ────────────────────────────────────────────────────────────
   nroComprobante:   { type: String },

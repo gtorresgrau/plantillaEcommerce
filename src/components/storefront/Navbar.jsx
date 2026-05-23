@@ -1,11 +1,14 @@
 'use client';
 // src/components/storefront/Navbar.jsx
 import Link from 'next/link';
-import { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { ShoppingCart, Menu, X, User, ChevronDown, LogOut, Package, Settings } from 'lucide-react';
-import { useCart } from '@/contexts/CartContext';
-import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ShoppingCart, Menu, X, User, ChevronDown, LogOut, Package, Settings, Search, Heart } from 'lucide-react';
+import { useCart }     from '@/contexts/CartContext';
+import { useAuth }     from '@/contexts/AuthContext';
+import { useWishlist } from '@/contexts/WishlistContext';
+import useDebounce from '@/hooks/useDebounce';
 
 const NAV_LINKS = [
   { href: '/productos',   label: 'Tienda',    scroll: null },
@@ -16,30 +19,75 @@ const NAV_LINKS = [
 
 export default function Navbar({ branding }) {
   const pathname = usePathname();
-  const [menuOpen,     setMenuOpen]     = useState(false);
-  const [userDropdown, setUserDropdown] = useState(false);
-  const dropdownRef = useRef(null);
+  const router   = useRouter();
+  const [menuOpen,      setMenuOpen]      = useState(false);
+  const [userDropdown,  setUserDropdown]  = useState(false);
+  const [searchOpen,    setSearchOpen]    = useState(false);
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const dropdownRef  = useRef(null);
+  const searchRef    = useRef(null);
+  const searchInputRef = useRef(null);
 
   const { totalItems }   = useCart();
   const { user, logout } = useAuth();
+  const { count: wishCount } = useWishlist();
 
   const navColor = branding?.colores?.nav     || 'var(--color-nav)';
   const navText  = branding?.colores?.navText || 'var(--color-nav-text)';
   const nombre   = branding?.nombreTienda     || 'Mi Tienda';
   const logoUrl  = branding?.logoUrl          || null;
 
-  // Cerrar dropdown al hacer click fuera
+  const debouncedQuery = useDebounce(searchQuery, 300);
+
+  // Búsqueda en tiempo real
+  useEffect(() => {
+    if (!debouncedQuery || debouncedQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    fetch(`/api/productos?q=${encodeURIComponent(debouncedQuery)}&limit=6`)
+      .then(r => r.json())
+      .then(data => setSearchResults(data.data || []))
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearchLoading(false));
+  }, [debouncedQuery]);
+
+  // Abrir search → foco automático
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    } else {
+      setSearchQuery('');
+      setSearchResults([]);
+    }
+  }, [searchOpen]);
+
+  // Cerrar dropdowns al click fuera
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setUserDropdown(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Si estamos en el home, los anchors hacen scroll suave; si no, navegan
+  // ESC cierra todo
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') { setSearchOpen(false); setUserDropdown(false); }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
   const resolveHref = (link) => {
     if (link.scroll && pathname === '/') return `#${link.scroll}`;
     return link.href;
@@ -53,6 +101,18 @@ export default function Navbar({ branding }) {
     } else {
       setMenuOpen(false);
     }
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearchOpen(false);
+    router.push(`/productos?q=${encodeURIComponent(searchQuery.trim())}`);
+  };
+
+  const handleResultClick = () => {
+    setSearchOpen(false);
+    setSearchQuery('');
   };
 
   return (
@@ -86,6 +146,118 @@ export default function Navbar({ branding }) {
 
           {/* Actions */}
           <div className="flex items-center gap-1">
+
+            {/* Búsqueda */}
+            <div className="relative" ref={searchRef}>
+              <button
+                onClick={() => setSearchOpen(o => !o)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                style={{ color: navText }}
+                aria-label="Buscar productos"
+              >
+                <Search size={20} />
+              </button>
+
+              {/* Dropdown de búsqueda */}
+              {searchOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                  <form onSubmit={handleSearchSubmit} className="flex items-center border-b border-gray-100">
+                    <Search size={16} className="ml-3 text-gray-400 flex-shrink-0" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Buscar productos..."
+                      className="flex-1 px-3 py-3 text-sm text-gray-800 focus:outline-none placeholder-gray-400"
+                    />
+                    {searchQuery && (
+                      <button type="button" onClick={() => setSearchQuery('')} className="p-2 text-gray-400 hover:text-gray-600">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </form>
+
+                  {/* Resultados */}
+                  {searchLoading && (
+                    <div className="flex items-center justify-center py-6">
+                      <span className="animate-spin h-5 w-5 border-2 border-brand-primary border-t-transparent rounded-full" />
+                    </div>
+                  )}
+
+                  {!searchLoading && searchResults.length > 0 && (
+                    <ul className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                      {searchResults.map(p => {
+                        const precio = p.precioFinal ?? (p.descuento > 0
+                          ? Math.round(p.precio * (1 - p.descuento / 100))
+                          : p.precio);
+                        return (
+                          <li key={p._id}>
+                            <Link
+                              href={`/productos/${p.cod_producto}`}
+                              onClick={handleResultClick}
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                {p.foto1
+                                  ? <Image src={p.foto1} alt={p.titulo_de_producto} fill className="object-cover" sizes="40px" />
+                                  : <span className="text-lg flex items-center justify-center w-full h-full">📦</span>
+                                }
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-800 font-medium line-clamp-1">{p.titulo_de_producto}</p>
+                                <p className="text-xs text-gray-500">{p.categoria}</p>
+                              </div>
+                              <span className="text-sm font-bold text-brand-primary flex-shrink-0">
+                                ${precio?.toLocaleString('es-AR')}
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  {!searchLoading && debouncedQuery.length >= 2 && searchResults.length === 0 && (
+                    <div className="py-6 text-center text-sm text-gray-400">
+                      Sin resultados para &quot;{debouncedQuery}&quot;
+                    </div>
+                  )}
+
+                  {searchResults.length > 0 && (
+                    <div className="border-t border-gray-100 px-4 py-2">
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="text-xs text-brand-primary font-medium hover:underline"
+                      >
+                        Ver todos los resultados →
+                      </button>
+                    </div>
+                  )}
+
+                  {!debouncedQuery && (
+                    <div className="py-5 text-center text-sm text-gray-400">
+                      Escribí para buscar productos...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Favoritos */}
+            <Link
+              href="/favoritos"
+              className="relative p-2 rounded-lg hover:bg-white/10 transition-colors"
+              style={{ color: navText }}
+              aria-label="Favoritos"
+            >
+              <Heart size={20} className={wishCount > 0 ? 'fill-current text-red-400' : ''} />
+              {wishCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                  {wishCount > 9 ? '9+' : wishCount}
+                </span>
+              )}
+            </Link>
 
             {/* Carrito */}
             <Link
@@ -172,6 +344,22 @@ export default function Navbar({ branding }) {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden pb-4 space-y-0.5 border-t border-white/20 pt-3">
+
+            {/* Búsqueda mobile */}
+            <form onSubmit={handleSearchSubmit} className="px-3 pb-2">
+              <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                <Search size={15} style={{ color: navText }} className="opacity-70" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar productos..."
+                  className="flex-1 bg-transparent text-sm focus:outline-none placeholder-white/50"
+                  style={{ color: navText }}
+                />
+              </div>
+            </form>
+
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}

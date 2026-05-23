@@ -44,10 +44,10 @@ export function generarCSVProductos(productos) {
     { label: 'Destacado',     value: (row) => row.destacado ? 'Sí' : 'No' },
     { label: 'Visible',       value: (row) => row.visible ? 'Sí' : 'No' },
     { label: 'Activo',        value: (row) => row.activo ? 'Sí' : 'No' },
-    { label: 'Foto 1',        value: 'foto_1_1' },
-    { label: 'Foto 2',        value: 'foto_1_2' },
-    { label: 'Foto 3',        value: 'foto_1_3' },
-    { label: 'Foto 4',        value: 'foto_1_4' },
+    { label: 'Foto 1',        value: 'foto1' },
+    { label: 'Foto 2',        value: 'foto2' },
+    { label: 'Foto 3',        value: 'foto3' },
+    { label: 'Foto 4',        value: 'foto4' },
     { label: 'Creado',        value: (row) => new Date(row.createdAt).toLocaleDateString('es-AR') },
   ];
 

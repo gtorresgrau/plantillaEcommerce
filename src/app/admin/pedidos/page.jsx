@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, FileText, Truck, ChevronDown, X } from 'lucide-react';
+import { Search, FileText, Truck, ChevronDown, X, Download } from 'lucide-react';
 import Swal from 'sweetalert2';
 import usePickit from '@/hooks/usePickit';
 
@@ -21,12 +21,25 @@ function PedidoRow({ pedido, onStatusChange }) {
   const { generateLabel, pickitLoading: labelLoading } = usePickit();
 
   const updateStatus = async (newStatus) => {
+    // Pedir nota opcional para el historial
+    const { value: notaHistorial, isConfirmed } = await Swal.fire({
+      title: 'Cambiar estado',
+      html: `<p style="margin-bottom:8px;font-size:14px;color:#6b7280;">Nuevo estado: <strong>${newStatus}</strong></p>
+             <textarea id="swal-nota" class="swal2-textarea" placeholder="Nota opcional (visible al cliente)..." style="height:80px;font-size:13px;"></textarea>`,
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: 'var(--color-primary)',
+      preConfirm: () => document.getElementById('swal-nota')?.value || '',
+    });
+    if (!isConfirmed) return;
+
     setUpdating(true);
     try {
       const res = await fetch(`/api/pedidos/${pedido.orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderStatus: newStatus }),
+        body: JSON.stringify({ orderStatus: newStatus, notaHistorial }),
       });
       if (!res.ok) throw new Error('Error al actualizar');
       setStatus(newStatus);
@@ -101,7 +114,7 @@ function PedidoRow({ pedido, onStatusChange }) {
                 <p className="font-medium text-brand-text mb-2">Productos</p>
                 {pedido.items?.map((item, i) => (
                   <div key={i} className="flex justify-between text-brand-muted text-xs py-0.5">
-                    <span>{item.titulo_de_producto} ×{item.quantity}</span>
+                    <span>{item.nombre || item.titulo_de_producto} ×{item.quantity}</span>
                     <span>${((item.precioFinal || item.precio) * item.quantity).toLocaleString('es-AR')}</span>
                   </div>
                 ))}
@@ -174,29 +187,70 @@ export default function AdminPedidosPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-brand-text mb-6">Pedidos</h1>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-text">Pedidos</h1>
+          {!loading && (
+            <span className="text-sm text-brand-muted">
+              {filtrados.length} de {total} pedido{total !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
 
-      {/* Filtros */}
-      <div className="flex gap-3 mb-4 flex-wrap">
-        <div className="relative">
+        {/* Botón exportar CSV */}
+        <a
+          href={`/api/pedidos/export${filterStatus ? `?status=${filterStatus}` : ''}`}
+          download
+          className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-gray-50 transition-colors"
+        >
+          <Download size={14} /> Exportar CSV
+        </a>
+      </div>
+
+      {/* Búsqueda + tabs de estado */}
+      <div className="mb-4 space-y-3">
+        {/* Buscador */}
+        <div className="relative max-w-sm">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
           <input
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar pedido..."
-            className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white w-56"
+            placeholder="Buscar por N°, cliente o email..."
+            className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white w-full"
           />
+          {busqueda && (
+            <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-text">
+              <X size={14} />
+            </button>
+          )}
         </div>
-        <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-brand-text bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary">
-          <option value="">Todos los estados</option>
-          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-        </select>
-        {filterStatus && (
-          <button onClick={() => setFilterStatus('')} className="flex items-center gap-1 text-sm text-brand-muted hover:text-brand-text">
-            <X size={14} /> Limpiar
-          </button>
-        )}
+
+        {/* Tabs de estado */}
+        <div className="flex gap-1.5 flex-wrap">
+          {[
+            { value: '',           label: 'Todos' },
+            { value: 'pendiente',  label: 'Pendientes' },
+            { value: 'pagado',     label: 'Pagados' },
+            { value: 'preparando', label: 'Preparando' },
+            { value: 'enviado',    label: 'Enviados' },
+            { value: 'entregado',  label: 'Entregados' },
+            { value: 'cancelado',  label: 'Cancelados' },
+          ].map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => { setFilterStatus(tab.value); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filterStatus === tab.value
+                  ? 'text-white'
+                  : 'bg-gray-100 text-brand-muted hover:bg-gray-200'
+              }`}
+              style={filterStatus === tab.value ? { backgroundColor: 'var(--color-primary)' } : {}}
+            >
+              {tab.label}
+              {tab.value === 'pendiente' && total > 0 && filterStatus !== 'pendiente' ? '' : ''}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="card overflow-x-auto">

@@ -141,8 +141,9 @@ export default function Footer({ branding, config }) {
           </p>
           <div className="flex gap-4">
             {[
-              { href: '/politica-privacidad', label: 'Privacidad' },
-              { href: '/terminos',            label: 'Términos' },
+              { href: '/politicas#privacidad', label: 'Privacidad' },
+              { href: '/politicas#terminos',   label: 'Términos' },
+              { href: '/politicas#devolucion', label: 'Devoluciones' },
             ].map(({ href, label }) => (
               <Link key={href} href={href}
                 className="text-xs opacity-50 hover:opacity-80 transition-opacity"

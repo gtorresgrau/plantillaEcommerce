@@ -3,33 +3,71 @@ import './globals.css';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { AuthProvider }     from '@/contexts/AuthContext';
 import { CartProvider }     from '@/contexts/CartContext';
+import { WishlistProvider } from '@/contexts/WishlistContext';
+import { CompareProvider }  from '@/contexts/CompareContext';
+import CompareBar           from '@/components/storefront/CompareBar';
 import { connectDB } from '@/lib/mongodb';
 import BrandingConfig from '@/models/BrandingConfig';
+import Configuracion  from '@/models/Configuracion';
 
-// Carga el branding desde DB en cada request (Server Component)
-async function getBranding() {
+// Carga el branding y config desde DB en cada request (Server Component)
+async function getBrandingAndConfig() {
   try {
     await connectDB();
-    const branding = await BrandingConfig.findOne({ activo: true }).lean();
-    return branding || null;
+    const [branding, config] = await Promise.all([
+      BrandingConfig.findOne({ activo: true }).lean(),
+      Configuracion.findOne({ activo: true }, { urlHttps: 1, urlWWW: 1 }).lean(),
+    ]);
+    return { branding: branding || null, config: config || null };
   } catch {
-    return null;
+    return { branding: null, config: null };
   }
 }
 
+// Compatibilidad: alias para usos que solo necesitan branding
+async function getBranding() {
+  const { branding } = await getBrandingAndConfig();
+  return branding;
+}
+
 export async function generateMetadata() {
-  const branding = await getBranding();
+  const { branding, config } = await getBrandingAndConfig();
+  const siteUrl = (config?.urlHttps || config?.urlWWW || 'https://mitienda.com').replace(/\/$/, '');
+  const titulo      = branding?.seo?.titulo      || 'Mi Tienda Online';
+  const descripcion = branding?.seo?.descripcion || 'La mejor tienda online.';
+
   return {
-    title:       branding?.seo?.titulo       || 'Mi Tienda Online',
-    description: branding?.seo?.descripcion  || 'La mejor tienda online.',
-    keywords:    branding?.seo?.keywords     || '',
+    metadataBase: new URL(siteUrl),
+    title: {
+      default:  titulo,
+      template: `%s | ${branding?.nombreTienda || 'Mi Tienda'}`,
+    },
+    description: descripcion,
+    keywords:    branding?.seo?.keywords || '',
     icons: {
-      icon: branding?.faviconUrl || '/favicon.ico',
+      icon:    branding?.faviconUrl || '/favicon.ico',
+      apple:   branding?.faviconUrl || '/favicon.ico',
     },
     openGraph: {
-      title:       branding?.seo?.titulo      || 'Mi Tienda Online',
-      description: branding?.seo?.descripcion || '',
+      title:       titulo,
+      description: descripcion,
+      url:         siteUrl,
+      siteName:    branding?.nombreTienda || 'Mi Tienda',
+      images:      branding?.ogImageUrl
+        ? [{ url: branding.ogImageUrl, width: 1200, height: 630, alt: titulo }]
+        : [],
+      locale: 'es_AR',
+      type:   'website',
+    },
+    twitter: {
+      card:        'summary_large_image',
+      title:       titulo,
+      description: descripcion,
       images:      branding?.ogImageUrl ? [branding.ogImageUrl] : [],
+    },
+    robots: {
+      index:  true,
+      follow: true,
     },
   };
 }
@@ -78,7 +116,12 @@ export default async function RootLayout({ children }) {
         <BrandingProvider branding={branding}>
           <AuthProvider>
             <CartProvider>
-              {children}
+              <WishlistProvider>
+                <CompareProvider>
+                  {children}
+                  <CompareBar />
+                </CompareProvider>
+              </WishlistProvider>
             </CartProvider>
           </AuthProvider>
         </BrandingProvider>

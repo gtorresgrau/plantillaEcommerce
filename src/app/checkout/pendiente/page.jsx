@@ -1,14 +1,22 @@
 'use client';
-import { Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Clock, Package } from 'lucide-react';
 import Navbar from '@/components/storefront/Navbar';
 import Footer from '@/components/storefront/Footer';
+import { useCart } from '@/contexts/CartContext';
 
 function PendienteContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId') || searchParams.get('external_reference');
+  const { clearCart } = useCart();
+
+  useEffect(() => {
+    // El pedido ya fue creado, vaciar el carrito independientemente del estado del pago
+    clearCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">

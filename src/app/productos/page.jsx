@@ -3,11 +3,10 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, SlidersHorizontal, X, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronDown, ChevronUp, ShoppingCart, Star } from 'lucide-react';
 import Navbar from '@/components/storefront/Navbar';
 import Footer from '@/components/storefront/Footer';
 import { useCart } from '@/contexts/CartContext';
-import { CATEGORIAS_PRUEBA, MARCAS_PRUEBA } from '@/data/productosDePrueba';
 import Swal from 'sweetalert2';
 
 // ── ProductCard inline ────────────────────────────────────────────────────────
@@ -59,6 +58,23 @@ function ProductCard({ producto }) {
       <div className="flex-1 flex flex-col">
         <p className="text-xs text-brand-muted mb-1">{producto.marca || producto.categoria}</p>
         <h3 className="text-sm font-medium text-brand-text line-clamp-2 flex-1">{producto.titulo_de_producto}</h3>
+
+        {/* Rating */}
+        {producto.cantResenas > 0 && (
+          <div className="flex items-center gap-1 mt-1">
+            <div className="flex">
+              {[1,2,3,4,5].map(i => (
+                <Star key={i} size={9}
+                  className={i <= Math.round(producto.promedio)
+                    ? 'text-yellow-400 fill-yellow-400'
+                    : 'text-gray-200 fill-gray-200'}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-brand-muted">{producto.promedio?.toFixed(1)}</span>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mt-2">
           <span className="text-lg font-bold text-brand-text">${precioFinal.toLocaleString('es-AR')}</span>
           {producto.descuento > 0 && (
@@ -103,6 +119,10 @@ function ProductosContent() {
   const [page, setPage]           = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Filtros dinámicos desde la DB
+  const [categoriasList, setCategoriasList] = useState([]);
+  const [marcasList,     setMarcasList]     = useState([]);
+
   // Filtros locales
   const [busqueda,  setBusqueda]  = useState(searchParams.get('q') || '');
   const [categoria, setCategoria] = useState(searchParams.get('categoria') || '');
@@ -141,6 +161,19 @@ function ProductosContent() {
     }
   }, [busqueda, categoria, marca, ordenar, soloDesc, soloStock, precioMin, precioMax]);
 
+  // Cargar categorías y marcas disponibles al montar
+  useEffect(() => {
+    fetch('/api/productos/filtros')
+      .then(r => r.json())
+      .then(({ data }) => {
+        if (data) {
+          setCategoriasList(data.categorias || []);
+          setMarcasList(data.marcas || []);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     setPage(1);
     fetchProductos(1);
@@ -171,27 +204,31 @@ function ProductosContent() {
         )}
       </div>
 
-      <FilterSection title="Categoría">
-        <div className="space-y-1.5">
-          {CATEGORIAS_PRUEBA.map(cat => (
-            <label key={cat} className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
-              <input type="radio" name="categoria" value={cat} checked={categoria === cat} onChange={() => setCategoria(cat === categoria ? '' : cat)} className="accent-brand-primary" />
-              {cat}
-            </label>
-          ))}
-        </div>
-      </FilterSection>
+      {categoriasList.length > 0 && (
+        <FilterSection title="Categoría">
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {categoriasList.map(cat => (
+              <label key={cat} className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
+                <input type="radio" name="categoria" value={cat} checked={categoria === cat} onChange={() => setCategoria(cat === categoria ? '' : cat)} className="accent-brand-primary" />
+                {cat}
+              </label>
+            ))}
+          </div>
+        </FilterSection>
+      )}
 
-      <FilterSection title="Marca">
-        <div className="space-y-1.5 max-h-40 overflow-y-auto">
-          {MARCAS_PRUEBA.map(m => (
-            <label key={m} className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
-              <input type="radio" name="marca" value={m} checked={marca === m} onChange={() => setMarca(m === marca ? '' : m)} className="accent-brand-primary" />
-              {m}
-            </label>
-          ))}
-        </div>
-      </FilterSection>
+      {marcasList.length > 0 && (
+        <FilterSection title="Marca">
+          <div className="space-y-1.5 max-h-40 overflow-y-auto">
+            {marcasList.map(m => (
+              <label key={m} className="flex items-center gap-2 text-sm text-brand-text cursor-pointer">
+                <input type="radio" name="marca" value={m} checked={marca === m} onChange={() => setMarca(m === marca ? '' : m)} className="accent-brand-primary" />
+                {m}
+              </label>
+            ))}
+          </div>
+        </FilterSection>
+      )}
 
       <FilterSection title="Precio">
         <div className="flex gap-2 items-center">
@@ -248,6 +285,7 @@ function ProductosContent() {
               <option value="precio_asc">Precio: menor a mayor</option>
               <option value="precio_desc">Precio: mayor a menor</option>
               <option value="nombre_asc">Nombre A-Z</option>
+              <option value="rating">Mejor valorados</option>
             </select>
             {/* Toggle sidebar mobile */}
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="sm:hidden flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-brand-text bg-white">
@@ -255,6 +293,51 @@ function ProductosContent() {
             </button>
           </div>
         </div>
+
+        {/* Chips de filtros activos */}
+        {hasFilters && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {busqueda && (
+              <span className="inline-flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary text-xs font-medium px-3 py-1 rounded-full">
+                Búsqueda: {busqueda}
+                <button onClick={() => setBusqueda('')}><X size={10} /></button>
+              </span>
+            )}
+            {categoria && (
+              <span className="inline-flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary text-xs font-medium px-3 py-1 rounded-full">
+                {categoria}
+                <button onClick={() => setCategoria('')}><X size={10} /></button>
+              </span>
+            )}
+            {marca && (
+              <span className="inline-flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary text-xs font-medium px-3 py-1 rounded-full">
+                {marca}
+                <button onClick={() => setMarca('')}><X size={10} /></button>
+              </span>
+            )}
+            {(precioMin || precioMax) && (
+              <span className="inline-flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary text-xs font-medium px-3 py-1 rounded-full">
+                Precio: {precioMin ? `$${precioMin}` : ''}{precioMin && precioMax ? ' — ' : ''}{precioMax ? `$${precioMax}` : ''}
+                <button onClick={() => { setPrecioMin(''); setPrecioMax(''); }}><X size={10} /></button>
+              </span>
+            )}
+            {soloDesc && (
+              <span className="inline-flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary text-xs font-medium px-3 py-1 rounded-full">
+                Con descuento
+                <button onClick={() => setSoloDesc(false)}><X size={10} /></button>
+              </span>
+            )}
+            {soloStock && (
+              <span className="inline-flex items-center gap-1.5 bg-brand-primary/10 text-brand-primary text-xs font-medium px-3 py-1 rounded-full">
+                Con stock
+                <button onClick={() => setSoloStock(false)}><X size={10} /></button>
+              </span>
+            )}
+            <button onClick={clearFilters} className="text-xs text-brand-muted hover:text-brand-danger underline">
+              Limpiar todos
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-6">
           {/* Sidebar desktop */}

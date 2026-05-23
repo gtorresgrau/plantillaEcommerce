@@ -58,6 +58,7 @@ export async function GET(request) {
       precio_desc: { precio: -1 },
       nombre_asc:  { titulo_de_producto: 1 },
       destacado:   { destacado: -1, createdAt: -1 },
+      rating:      { promedio: -1, cantResenas: -1 },
     };
     const sort = sortMap[ordenar] || { createdAt: -1 };
 

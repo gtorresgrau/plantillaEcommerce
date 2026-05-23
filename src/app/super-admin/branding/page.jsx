@@ -105,7 +105,7 @@ export default function BrandingPage() {
   });
 
   // Imágenes
-  const [logos, setLogos] = useState({ logoUrl: '', logoBlanco: '', faviconUrl: '', ogImageUrl: '' });
+  const [logos, setLogos] = useState({ logoUrl: '', logoBlanco: '', faviconUrl: '', ogImageUrl: '', heroBg: '', bannerImg: '' });
 
   useEffect(() => {
     fetch('/api/super-admin/branding')
@@ -123,14 +123,14 @@ export default function BrandingPage() {
             secciones:    data.secciones,
           });
           if (data.colores)   setColores(c => ({ ...c, ...data.colores }));
-          if (data.logoUrl || data.logoBlanco || data.faviconUrl || data.ogImageUrl) {
-            setLogos({
-              logoUrl:    data.logoUrl    || '',
-              logoBlanco: data.logoBlanco || '',
-              faviconUrl: data.faviconUrl || '',
-              ogImageUrl: data.ogImageUrl || '',
-            });
-          }
+          setLogos({
+            logoUrl:    data.logoUrl          || '',
+            logoBlanco: data.logoBlanco       || '',
+            faviconUrl: data.faviconUrl       || '',
+            ogImageUrl: data.ogImageUrl       || '',
+            heroBg:     data.heroBg           || '',
+            bannerImg:  data.banner?.imagen   || '',
+          });
         }
       })
       .finally(() => setLoading(false));
@@ -155,7 +155,15 @@ export default function BrandingPage() {
       const payload = {
         ...formData,
         colores,
-        ...logos,
+        logoUrl:    logos.logoUrl,
+        logoBlanco: logos.logoBlanco,
+        faviconUrl: logos.faviconUrl,
+        ogImageUrl: logos.ogImageUrl,
+        heroBg:     logos.heroBg,
+        banner: {
+          ...formData.banner,
+          imagen: logos.bannerImg,
+        },
       };
       const res = await fetch('/api/super-admin/branding', {
         method: 'PUT',
@@ -355,6 +363,13 @@ export default function BrandingPage() {
             onUpload={(url) => setLogos(l => ({ ...l, ogImageUrl: url }))}
             tipo="branding" folder="branding"
           />
+          <ImageUpload
+            label="Imagen de fondo del Hero"
+            description="Fondo de la sección principal del home (recomendado 1920x1080 px)"
+            currentUrl={logos.heroBg}
+            onUpload={(url) => setLogos(l => ({ ...l, heroBg: url }))}
+            tipo="branding" folder="branding"
+          />
         </div>
 
         {/* ── Tipografía ─────────────────────────────────────────────────────── */}
@@ -413,15 +428,72 @@ export default function BrandingPage() {
         {/* ── Textos UI ──────────────────────────────────────────────────────── */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 lg:col-span-2">
           <h2 className="text-white font-semibold mb-4 text-lg">✏️ Textos de la interfaz</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          {/* Botones y Hero */}
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Hero & Botones</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {[
+              { field: 'textos.textoBienvenida', label: 'Título del hero' },
+              { field: 'textos.textoHero',       label: 'Subtítulo del hero' },
+              { field: 'textos.textoCTA',        label: 'Texto del CTA principal' },
               { field: 'textos.botonComprar',    label: 'Botón comprar' },
               { field: 'textos.botonCarrito',    label: 'Botón agregar al carrito' },
               { field: 'textos.botonContacto',   label: 'Botón de contacto' },
-              { field: 'textos.textoBienvenida', label: 'Texto de bienvenida (hero)' },
-              { field: 'textos.textoHero',       label: 'Subtítulo del hero' },
-              { field: 'textos.textoCTA',        label: 'Texto del CTA principal' },
               { field: 'textos.mensajeWhatsapp', label: 'Mensaje predefinido WhatsApp' },
+            ].map(({ field, label }) => (
+              <div key={field}>
+                <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                <input
+                  {...register(field)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Sección Destacados */}
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Sección Destacados</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {[
+              { field: 'textos.textoDestacados',     label: 'Título sección destacados' },
+              { field: 'textos.subtituloDestacados',  label: 'Subtítulo sección destacados' },
+            ].map(({ field, label }) => (
+              <div key={field}>
+                <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                <input
+                  {...register(field)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Sección Nosotros */}
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Sección Nosotros</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Título Nosotros</label>
+              <input
+                {...register('textos.textoNosotros')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs text-gray-500 mb-1 block">Descripción Nosotros</label>
+              <textarea
+                {...register('textos.descripcionNosotros')}
+                rows={3}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Newsletter */}
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Sección Newsletter</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              { field: 'textos.tituloNewsletter',    label: 'Título newsletter' },
+              { field: 'textos.subtituloNewsletter',  label: 'Subtítulo newsletter' },
             ].map(({ field, label }) => (
               <div key={field}>
                 <label className="text-xs text-gray-500 mb-1 block">{label}</label>
@@ -434,6 +506,62 @@ export default function BrandingPage() {
           </div>
         </div>
 
+        {/* ── Banner promocional ────────────────────────────────────────────── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 lg:col-span-2">
+          <h2 className="text-white font-semibold mb-4 text-lg">🎯 Banner promocional</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Título del banner</label>
+              <input
+                {...register('banner.titulo')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                placeholder="¡Oferta especial!"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Subtítulo del banner</label>
+              <input
+                {...register('banner.subtitulo')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                placeholder="Descubrí nuestras promociones exclusivas."
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Texto del botón CTA</label>
+              <input
+                {...register('banner.ctaTexto')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                placeholder="Ver ofertas"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Link del botón CTA</label>
+              <input
+                {...register('banner.ctaLink')}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none font-mono text-xs"
+                placeholder="/productos?descuento=1"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Color de fondo (si no hay imagen)</label>
+              <div className="relative flex items-center gap-2">
+                <input
+                  {...register('banner.bgColor')}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none font-mono"
+                  placeholder="#1E40AF"
+                />
+              </div>
+            </div>
+          </div>
+          <ImageUpload
+            label="Imagen de fondo del banner"
+            description="Imagen de fondo (recomendado 1920x600 px)"
+            currentUrl={logos.bannerImg || ''}
+            onUpload={(url) => setLogos(l => ({ ...l, bannerImg: url }))}
+            tipo="branding" folder="branding"
+          />
+        </div>
+
         {/* ── Secciones visibles ─────────────────────────────────────────────── */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h2 className="text-white font-semibold mb-4 text-lg">👁️ Secciones del home</h2>
@@ -443,6 +571,10 @@ export default function BrandingPage() {
             { field: 'secciones.mostrarCategorias',  label: 'Grilla de categorías' },
             { field: 'secciones.mostrarNovedades',   label: 'Novedades / Nuevos productos' },
             { field: 'secciones.mostrarBanner',      label: 'Banner promocional' },
+            { field: 'secciones.mostrarNosotros',    label: 'Sección Nosotros' },
+            { field: 'secciones.mostrarFAQ',         label: 'Sección FAQ' },
+            { field: 'secciones.mostrarNewsletter',  label: 'Sección Newsletter' },
+            { field: 'secciones.mostrarContacto',    label: 'Sección Contacto' },
             { field: 'secciones.mostrarTestimonios', label: 'Sección de testimonios' },
           ].map(({ field, label }) => (
             <label key={field} className="flex items-center justify-between py-2.5 border-b border-gray-800 cursor-pointer">

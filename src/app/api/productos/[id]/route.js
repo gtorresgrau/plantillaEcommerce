@@ -63,7 +63,7 @@ export async function DELETE(request, { params }) {
     if (!producto) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
 
     // Eliminar imágenes de Cloudinary
-    const fotos = [producto.foto_1_1, producto.foto_1_2, producto.foto_1_3, producto.foto_1_4].filter(Boolean);
+    const fotos = [producto.foto1, producto.foto2, producto.foto3, producto.foto4].filter(Boolean);
     for (const foto of fotos) {
       try {
         // Extraer publicId de la URL de Cloudinary

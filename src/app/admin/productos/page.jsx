@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Pencil, Trash2, Upload, X, Search, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import Swal from 'sweetalert2';
 
 const EMPTY_FORM = {
@@ -228,9 +229,14 @@ export default function AdminProductosPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-brand-text">Productos</h1>
-        <button onClick={() => setModal('nuevo')} className="btn-primary flex items-center gap-2 text-sm">
-          <Plus size={16} /> Nuevo producto
-        </button>
+        <div className="flex gap-2">
+          <Link href="/admin/productos/importar" className="btn-secondary flex items-center gap-2 text-sm">
+            <Upload size={16} /> Importar CSV
+          </Link>
+          <button onClick={() => setModal('nuevo')} className="btn-primary flex items-center gap-2 text-sm">
+            <Plus size={16} /> Nuevo producto
+          </button>
+        </div>
       </div>
 
       {/* Búsqueda */}

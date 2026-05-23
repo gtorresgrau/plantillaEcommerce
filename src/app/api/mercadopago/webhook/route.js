@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Order from '@/models/Order';
+import Producto from '@/models/Product';
 import { obtenerPago } from '@/lib/mercadopago';
 
 export async function POST(request) {
@@ -37,7 +38,7 @@ export async function POST(request) {
       orderStatus = 'cancelado';
     }
 
-    await Order.findOneAndUpdate(
+    const updatedOrder = await Order.findOneAndUpdate(
       { orderId: externalRef },
       {
         $set: {
@@ -50,8 +51,25 @@ export async function POST(request) {
           'mercadoPagoInfo.dateApproved': payment.date_approved,
           'mercadoPagoInfo.transactionAmount': payment.transaction_amount,
         },
-      }
+      },
+      { new: false } // nos interesa el estado ANTERIOR para detectar transiciones
     );
+
+    // ── Restaurar stock si el pago fue rechazado/cancelado ────────────────────
+    const eraActivo = updatedOrder?.orderStatus &&
+      !['cancelado'].includes(updatedOrder.orderStatus);
+    const ahoraCancelado = orderStatus === 'cancelado';
+
+    if (eraActivo && ahoraCancelado && updatedOrder?.items?.length) {
+      await Promise.allSettled(
+        updatedOrder.items.map(item =>
+          Producto.updateOne(
+            { cod_producto: item.cod_producto },
+            { $inc: { stock: item.quantity } }
+          )
+        )
+      );
+    }
 
     return NextResponse.json({ received: true });
   } catch (error) {

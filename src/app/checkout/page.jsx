@@ -1,24 +1,19 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import Navbar from '@/components/storefront/Navbar';
 import Footer from '@/components/storefront/Footer';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { CreditCard, Landmark, Banknote, MapPin, User, Phone, Mail } from 'lucide-react';
+import { CreditCard, Landmark, Banknote, MapPin, User, Phone, Mail, Tag, X, CheckCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 import Link from 'next/link';
 
-const METODO_LABELS = {
-  mercadopago:       { label: 'MercadoPago',    icon: CreditCard,  desc: 'Tarjeta, efectivo o transferencia vía MP' },
-  transferencia:     { label: 'Transferencia',  icon: Landmark,    desc: 'CBU/alias — te enviamos los datos' },
-  efectivo:          { label: 'Efectivo',        icon: Banknote,    desc: 'Pago en mano al recibir' },
-};
-
-const TIPO_ENVIO_LABELS = {
-  pickit:        'Envío por Pickit (a domicilio o punto de retiro)',
-  retiroLocal:   'Retiro en local (sin costo)',
+const METODO_INFO = {
+  mercadopago:   { label: 'MercadoPago',   icon: CreditCard, desc: 'Tarjeta, efectivo o transferencia vía MP' },
+  transferencia: { label: 'Transferencia', icon: Landmark,   desc: 'CBU/alias — te enviamos los datos' },
+  efectivo:      { label: 'Efectivo',       icon: Banknote,   desc: 'Pago en mano al recibir' },
 };
 
 export default function CheckoutPage() {
@@ -27,11 +22,87 @@ export default function CheckoutPage() {
   const { user } = useAuth();
 
   const [metodoPago, setMetodoPago]   = useState('mercadopago');
-  const [tipoEnvio, setTipoEnvio]     = useState('pickit');
-  const [loading, setLoading]         = useState(false);
+  const [tipoEnvio,  setTipoEnvio]    = useState('pickit');
+  const [loading,    setLoading]      = useState(false);
+  const [config,     setConfig]       = useState(null);
 
-  const COSTO_ENVIO = tipoEnvio === 'retiroLocal' ? 0 : 1500;
-  const total = subtotal + COSTO_ENVIO;
+  // ── Cupón de descuento ─────────────────────────────────────────────────────
+  const [codigoCupon,    setCodigoCupon]    = useState('');
+  const [cuponAplicado,  setCuponAplicado]  = useState(null); // { codigo, tipo, valor, descuento, descripcion }
+  const [cuponLoading,   setCuponLoading]   = useState(false);
+  const [cuponError,     setCuponError]     = useState('');
+
+  // ── Cargar configuración de la tienda ─────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/configuracion')
+      .then(r => r.json())
+      .then(d => {
+        if (d.data) {
+          setConfig(d.data);
+          // Setear el primer método de pago habilitado como default
+          const metodos = d.data.metodasPago || {};
+          const primerHabilitado = ['mercadopago','transferencia','efectivo'].find(m => metodos[m] !== false);
+          if (primerHabilitado) setMetodoPago(primerHabilitado);
+          // Setear el primer tipo de envío habilitado como default
+          if (d.data.envios?.pickit === false && d.data.envios?.retiroLocal !== false) {
+            setTipoEnvio('retiroLocal');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Costo de envío dinámico desde la configuración
+  const costoEnvioBase   = config?.envios?.costoEnvio   ?? 1500;
+  const envioGratisDesde = config?.envios?.envioGratisDesdeMonto ?? 0;
+  const envioGratis      = envioGratisDesde > 0 && subtotal >= envioGratisDesde;
+  const COSTO_ENVIO      = tipoEnvio === 'retiroLocal' ? 0 : (envioGratis ? 0 : costoEnvioBase);
+  const descuentoCupon   = cuponAplicado?.descuento || 0;
+  const total            = subtotal + COSTO_ENVIO - descuentoCupon;
+
+  const aplicarCupon = async () => {
+    if (!codigoCupon.trim()) return;
+    setCuponLoading(true);
+    setCuponError('');
+    try {
+      const res = await fetch('/api/cupones/validar', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ codigo: codigoCupon, subtotal }),
+      });
+      const d = await res.json();
+      if (!d.valido) {
+        setCuponError(d.error || 'Cupón inválido');
+        setCuponAplicado(null);
+      } else {
+        setCuponAplicado(d);
+        setCuponError('');
+      }
+    } catch {
+      setCuponError('Error al validar el cupón');
+    } finally {
+      setCuponLoading(false);
+    }
+  };
+
+  const quitarCupon = () => {
+    setCuponAplicado(null);
+    setCodigoCupon('');
+    setCuponError('');
+  };
+
+  // Métodos de pago y envíos habilitados
+  const metodasPago  = config?.metodasPago  || { mercadopago: true, transferencia: true, efectivo: false };
+  const enviosConfig = config?.envios        || { pickit: true, retiroLocal: true };
+
+  const METODO_LABELS = Object.fromEntries(
+    Object.entries(METODO_INFO).filter(([key]) => metodasPago[key] !== false)
+  );
+
+  const TIPO_ENVIO_LABELS = {
+    ...(enviosConfig.pickit      !== false && { pickit:      'Envío a domicilio' }),
+    ...(enviosConfig.retiroLocal !== false && { retiroLocal: 'Retiro en local (sin costo)' }),
+  };
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: {
@@ -94,7 +165,9 @@ export default function CheckoutPage() {
           })),
           metodoPago,
           tipoEnvio,
-          costoEnvio: COSTO_ENVIO,
+          costoEnvio:      COSTO_ENVIO,
+          cupon:           cuponAplicado ? cuponAplicado.codigo : null,
+          descuentoCupon:  descuentoCupon,
         }),
       });
 
@@ -113,13 +186,14 @@ export default function CheckoutPage() {
         const mpData = await mpRes.json();
         if (!mpRes.ok) throw new Error(mpData.error || 'Error al crear la preferencia de pago');
         clearCart();
-        window.location.href = mpData.init_point;
+        // initPoint = producción, sandboxInitPoint = testing
+        window.location.href = mpData.initPoint || mpData.init_point;
         return;
       }
 
       // 3. Para otros métodos de pago
       clearCart();
-      router.push(`/checkout/exito?orderId=${orderId}`);
+      router.push(`/checkout/exito?orderId=${orderId}&metodo=${metodoPago}`);
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     } finally {
@@ -181,7 +255,14 @@ export default function CheckoutPage() {
                       <input type="radio" name="tipoEnvio" value={key} checked={tipoEnvio === key} onChange={() => setTipoEnvio(key)} className="accent-brand-primary" />
                       <div>
                         <p className="text-sm font-medium text-brand-text">{label}</p>
-                        <p className="text-xs text-brand-muted">{key === 'retiroLocal' ? 'Sin costo adicional' : `$${COSTO_ENVIO.toLocaleString('es-AR')}`}</p>
+                        <p className="text-xs text-brand-muted">
+                          {key === 'retiroLocal'
+                            ? 'Sin costo adicional'
+                            : envioGratis
+                              ? '¡Envío gratis por tu compra!'
+                              : `$${costoEnvioBase.toLocaleString('es-AR')}`
+                          }
+                        </p>
                       </div>
                     </label>
                   ))}
@@ -258,6 +339,55 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
+                {/* ── Cupón de descuento ──────────────────────────── */}
+                <div className="mb-4">
+                  {!cuponAplicado ? (
+                    <div>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Tag size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-muted" />
+                          <input
+                            type="text"
+                            value={codigoCupon}
+                            onChange={e => { setCodigoCupon(e.target.value.toUpperCase()); setCuponError(''); }}
+                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), aplicarCupon())}
+                            placeholder="Código de descuento"
+                            className="input pl-8 py-2 text-sm w-full font-mono uppercase"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={aplicarCupon}
+                          disabled={cuponLoading || !codigoCupon.trim()}
+                          className="btn-secondary text-sm px-3 py-2 disabled:opacity-50 flex-shrink-0"
+                        >
+                          {cuponLoading ? (
+                            <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                          ) : 'Aplicar'}
+                        </button>
+                      </div>
+                      {cuponError && (
+                        <p className="text-xs text-red-500 mt-1">{cuponError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle size={14} className="text-green-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-green-700 font-mono">{cuponAplicado.codigo}</p>
+                          <p className="text-xs text-green-600">
+                            {cuponAplicado.tipo === 'porcentaje' ? `${cuponAplicado.valor}% off` : `$${cuponAplicado.valor.toLocaleString('es-AR')} off`}
+                          </p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={quitarCupon} className="text-green-600 hover:text-green-800">
+                        <X size={15} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="border-t border-gray-100 pt-3 space-y-1.5 text-sm mb-4">
                   <div className="flex justify-between text-brand-muted">
                     <span>Subtotal</span>
@@ -265,11 +395,22 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex justify-between text-brand-muted">
                     <span>Envío</span>
-                    <span>{COSTO_ENVIO === 0 ? <span className="text-brand-success">Gratis</span> : `$${COSTO_ENVIO.toLocaleString('es-AR')}`}</span>
+                    <span>
+                      {COSTO_ENVIO === 0
+                        ? <span className="text-brand-success font-medium">Gratis{envioGratis && tipoEnvio !== 'retiroLocal' ? ' 🎉' : ''}</span>
+                        : `$${COSTO_ENVIO.toLocaleString('es-AR')}`
+                      }
+                    </span>
                   </div>
+                  {descuentoCupon > 0 && (
+                    <div className="flex justify-between text-green-600 font-medium">
+                      <span>Descuento {cuponAplicado?.codigo}</span>
+                      <span>−${descuentoCupon.toLocaleString('es-AR')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-brand-text text-base pt-1 border-t border-gray-100">
                     <span>Total</span>
-                    <span>${total.toLocaleString('es-AR')}</span>
+                    <span>${Math.max(0, total).toLocaleString('es-AR')}</span>
                   </div>
                 </div>
 

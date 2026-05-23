@@ -15,6 +15,7 @@ const brandingConfigSchema = new mongoose.Schema({
   logoBlanco:      { type: String, default: '' },
   faviconUrl:      { type: String, default: '' },
   ogImageUrl:      { type: String, default: '' },  // Open Graph
+  heroBg:          { type: String, default: '' },  // Imagen de fondo del hero
 
   // ── Paleta de colores ──────────────────────────────────────────────────────
   colores: {
@@ -63,7 +64,36 @@ const brandingConfigSchema = new mongoose.Schema({
     // Sección Destacados
     textoDestacados:      { type: String, default: 'Productos destacados' },
     subtituloDestacados:  { type: String, default: 'Los favoritos de nuestros clientes' },
+    // Newsletter
+    tituloNewsletter:     { type: String, default: '¡Suscribite a nuestras novedades!' },
+    subtituloNewsletter:  { type: String, default: 'Recibí ofertas exclusivas y novedades en tu email.' },
   },
+
+  // ── Banner promocional ─────────────────────────────────────────────────────
+  banner: {
+    titulo:     { type: String, default: '¡Oferta especial!' },
+    subtitulo:  { type: String, default: 'Descubrí nuestras promociones exclusivas.' },
+    imagen:     { type: String, default: '' },          // URL Cloudinary
+    ctaTexto:   { type: String, default: 'Ver ofertas' },
+    ctaLink:    { type: String, default: '/productos?descuento=1' },
+    bgColor:    { type: String, default: '' },          // fallback si no hay imagen
+  },
+
+  // ── Testimonios ────────────────────────────────────────────────────────────
+  testimonios: [{
+    nombre:    { type: String, default: '' },
+    texto:     { type: String, default: '' },
+    estrellas: { type: Number, default: 5 },
+    avatar:    { type: String, default: '' },
+    cargo:     { type: String, default: '' },
+  }],
+
+  // ── FAQs ───────────────────────────────────────────────────────────────────
+  faqs: [{
+    pregunta: { type: String, default: '' },
+    respuesta: { type: String, default: '' },
+    orden:     { type: Number, default: 0 },
+  }],
 
   // ── Secciones visibles en home ─────────────────────────────────────────────
   secciones: {
@@ -74,6 +104,7 @@ const brandingConfigSchema = new mongoose.Schema({
     mostrarTestimonios: { type: Boolean, default: false },
     mostrarNosotros:    { type: Boolean, default: true },
     mostrarFAQ:         { type: Boolean, default: true },
+    mostrarNewsletter:  { type: Boolean, default: true },
     mostrarContacto:    { type: Boolean, default: true },
   },
 
